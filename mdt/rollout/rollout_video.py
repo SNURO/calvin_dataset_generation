@@ -264,7 +264,7 @@ class RolloutVideo:
             if save_as_video:
             # encode sequence of images into gif string
             # MODIFIED: fps -> 속도만 바뀜, 전체 영상 시간이 늘어남
-                clip = mpy.ImageSequenceClip(list(tensor), fps=10)
+                clip = mpy.ImageSequenceClip(list(tensor), fps=30)
             else:
                 clip = mpy.ImageSequenceClip(list(tensor), fps=20)
 

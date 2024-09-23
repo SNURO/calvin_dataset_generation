@@ -11,8 +11,8 @@ eval_cfg_overwrite:
     voltron_cache: /home/snuro/lldm/mdt_policy/vcache
 
 ep_len: 360
-num_sequences: 5
-num_videos: 5
+num_sequences: 2
+num_videos: 2
 lang_embeddings: null
 render: False
 log_wandb: True
@@ -33,7 +33,7 @@ sigma_max: 80
 noise_scheduler: exponential
 
 dataset_generation:
-  sparsity: 
+  sparsity: 1
 # sigma_min: null
 # sigma_max: null
 # noise_scheduler: null

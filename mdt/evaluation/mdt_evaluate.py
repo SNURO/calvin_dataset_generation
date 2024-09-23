@@ -181,6 +181,7 @@ def evaluate_sequence(
         caption = " | ".join(eval_sequence)
         rollout_video.new_video(tag=get_video_tag(i), caption=caption)
     success_counter = 0
+    lang_annotations_idx = []
     if cfg.debug:
         time.sleep(1)
         print()
@@ -235,7 +236,7 @@ def rollout(env, model, task_oracle, cfg, subtask, lang_embeddings, val_annotati
             # join_vis_lang(img, lang_annotation)
             # time.sleep(0.1)
         # MODIFIED: 6 step마다 한 frame 씩만 update
-        if record and step % 6 == 0:
+        if record and step % cfg.dataset_generation.sparsity == 0:
             # update video
             # NOTE: observation RGB per frame
             rollout_video.update(obs["rgb_obs"]["rgb_static"])
