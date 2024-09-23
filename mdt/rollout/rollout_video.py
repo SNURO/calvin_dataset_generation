@@ -39,7 +39,9 @@ def add_modality(tasks, mod):
 class RolloutVideo:
     def __init__(self, logger, empty_cache, log_to_file, save_dir, resolution_scale=1):
         self.videos = []
+        # NOTE: video_paths unused when saving to file
         self.video_paths = {}
+        # NOTE: tags are used as filename later
         self.tags = []
         self.captions = []
         self.logger = logger
@@ -72,6 +74,16 @@ class RolloutVideo:
         self.captions.append(caption)
         self.step_counter = 0
         self.sub_task_beginning = 0
+    
+    def pop_last(self) -> None:
+        """
+        Remove the last video from the list.
+        """
+        self.videos.pop()
+        self.tags.pop()
+        self.captions.pop()
+        self.step_counter = 0
+        self.sub_task_beginning = 0
 
     def draw_outcome(self, successful):
         """
@@ -83,6 +95,7 @@ class RolloutVideo:
         c = 1 if successful else 0
         not_c = list({0, 1, 2} - {c})
         border = 3
+        # CHECK: frames를 조절하면 해당 frame만큼 반복되고 일시정지한 것으로 보임
         frames = 5
         self.videos[-1][:, -1:, c, :, :border] = 1
         self.videos[-1][:, -1:, not_c, :, :border] = 0
@@ -147,6 +160,7 @@ class RolloutVideo:
         log.info(f"GPU: {dist.get_rank()} freed {(mem1 - mem2) / 10**9:.1f}GB of reserved memory")
 
     def log(self, global_step: int) -> None:
+        # CHECK: 여기에 중간에 log를 한번 call 하고 메모리를 비워줄 수 있는 기능이 있는 것 같음
         """
         Call this method at the end of a validation epoch to log videos to tensorboard, wandb or filesystem.
         Args:
@@ -222,6 +236,7 @@ class RolloutVideo:
         """
         t, h, w, c = video_tensor.shape
         new_h, new_w = int(h * self.resolution_scale), int(w * self.resolution_scale)
+        # import ipdb; ipdb.set_trace()
         
         # Resize each frame using moviepy's ImageClip
         resized_video = [ImageSequenceClip([frame], durations=[1]).resize(height=new_h, width=new_w).get_frame(0) for frame in video_tensor]
@@ -248,7 +263,8 @@ class RolloutVideo:
             
             if save_as_video:
             # encode sequence of images into gif string
-                clip = mpy.ImageSequenceClip(list(tensor), fps=30)
+            # MODIFIED: fps -> 속도만 바뀜, 전체 영상 시간이 늘어남
+                clip = mpy.ImageSequenceClip(list(tensor), fps=10)
             else:
                 clip = mpy.ImageSequenceClip(list(tensor), fps=20)
 
@@ -258,6 +274,7 @@ class RolloutVideo:
             else:
                 filename = self.save_dir / f"{tag}_{global_step}.gif"
             if save_as_video:
+                # MODIFIED: bitrate 5000k -> 50000k : 효과 별로 없음
                 clip.write_videofile(filename, codec='libx264', bitrate="5000k")  # You can adjust the bitrate as needed
             else:
                 clip.write_gif(filename, logger=None)

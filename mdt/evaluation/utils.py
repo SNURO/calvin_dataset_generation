@@ -182,6 +182,7 @@ def get_default_beso_and_env(train_folder, dataset_path, checkpoint, env=None, l
 
     if lang_embeddings is None:
         lang_embeddings = LangEmbeddings(dataset.abs_datasets_dir, lang_folder, device=device)
+        # lang_embeddings = LangEmbeddings(Path('/cvdata1/jihwan/calvin/dataset/task_ABCD_D/training'), lang_folder, device=device)
 
     if env is None:
         rollout_cfg = OmegaConf.load(Path(__file__).parents[2] / "conf/callbacks/rollout/default.yaml")

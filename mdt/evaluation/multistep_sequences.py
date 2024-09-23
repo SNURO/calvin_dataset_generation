@@ -6,6 +6,7 @@ from itertools import product
 import logging
 import multiprocessing
 from operator import add
+import time
 
 import numpy as np
 
@@ -333,7 +334,8 @@ def check_sequence(state, seq):
 
 def get_sequences_for_state2(args):
     state, num_sequences, i = args
-    np.random.seed(i)
+    np.random.seed(i + int(time.time()))
+    # CHECK: modify here to change seq_len?
     seq_len = 5
     results = []
 
@@ -367,7 +369,8 @@ def get_sequences(num_sequences=1000, num_workers=None):
     num_sequences_per_state = list(map(len, np.array_split(range(num_sequences), len(initial_states))))
     logger.info("Start generating evaluation sequences.")
     # set the numpy seed temporarily to 0
-    with temp_seed(0):
+    # CHECK: why is seed set to 0 always?
+    with temp_seed(int(time.time())):
         num_workers = multiprocessing.cpu_count() if num_workers is None else num_workers
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
             results = flatten(

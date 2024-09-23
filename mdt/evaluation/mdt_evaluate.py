@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 def get_video_tag(i):
     if dist.is_available() and dist.is_initialized():
         i = i * dist.get_world_size() + dist.get_rank()
-    return f"_long_horizon/sequence_{i}"
+    # return f"_long_horizon/sequence_{i}"
+    # MODIFIED: saving file name convention
+    return f"D_{i:05d}"
 
 
 def get_log_dir(log_dir):
@@ -112,6 +114,12 @@ def print_and_save(total_results, plan_dicts, cfg, log_dir=None):
 def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=None):
     task_oracle = hydra.utils.instantiate(cfg.tasks)
     val_annotations = cfg.annotations
+    # CHECK: val_annotations is a dictionary of task -> list of lang annotations,
+    # however, all lists are length 1. 
+    # {'rotate_red_block_right': ['take the red block and rotate it to the right'], 'rotate_red_block_left': ['take the red block and rotate it to the left'], 'rotate_blue_block_right': ['take the blue block and rotate it to the right'], 'rotate_blue_block_left': ['take the blue block and rotate it to the left'], 
+    # CHECK: yaml config 에서 defaults: annotations: new_playtable_validation은 len(1) dict, new_playtable은 length가 긴 dict이므로 바꿔서 해볼 것
+    # MODIFIED: for saving convention -> global_step
+    global_step = 0
 
     # video stuff
     if num_videos > 0:
@@ -119,12 +127,15 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
             logger=logger,
             empty_cache=False,
             log_to_file=True,
+            # CHECK: change video saving directory here
             save_dir=save_dir,
-            resolution_scale=1,
+            # CHECK: resolution scale을 192/200으로 설정한다면?
+            resolution_scale=192/224,
         )
     else:
         rollout_video = None
 
+    # TODO: sequence generated here, modify numpy seed inside get_sequence function
     eval_sequences = get_sequences(cfg.num_sequences)
 
     results = []
@@ -133,13 +144,16 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
     if not cfg.debug:
         eval_sequences = tqdm(eval_sequences, position=0, leave=True)
 
+    num_saved = 0
+
     for i, (initial_state, eval_sequence) in enumerate(eval_sequences):
-        record = i < num_videos
+        record = num_saved < num_videos
         result = evaluate_sequence(
-            env, model, task_oracle, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, i
+            env, model, task_oracle, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, num_saved, save_dir, global_step
         )
         results.append(result)
         if record:
+            # NOTE: log_to_file = True이므로 아무것도 안함
             rollout_video.write_to_tmp()
         if not cfg.debug:
             success_rates = count_success(results)
@@ -147,15 +161,19 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
             description = " ".join([f"{i + 1}/5 : {v * 100:.1f}% |" for i, v in enumerate(success_rates)])
             description += f" Average: {average_rate:.1f} |"
             eval_sequences.set_description(description)
+        if result == 5:
+            num_saved += 1
 
     if num_videos > 0:
         # log rollout videos
-        rollout_video._log_videos_to_file(0, save_as_video=False)
+        # CHECK: have to modify this
+        print(f"saving {num_saved} videos")
+        rollout_video._log_videos_to_file(global_step, save_as_video=True)
     return results, plans
 
 
 def evaluate_sequence(
-    env, model, task_checker, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, i
+    env, model, task_checker, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, i, save_dir, global_step
 ):
     robot_obs, scene_obs = get_env_state_for_initial_condition(initial_state)
     env.reset(robot_obs=robot_obs, scene_obs=scene_obs)
@@ -174,11 +192,23 @@ def evaluate_sequence(
             rollout_video.new_subtask()
         success = rollout(env, model, task_checker, cfg, subtask, lang_embeddings, val_annotations, record, rollout_video)
         if record:
-            rollout_video.draw_outcome(success)
+            # MODIFIED: removed draw_outcome 
+            # rollout_video.draw_outcome(success)
+            pass
+            
         if success:
             success_counter += 1
         else:
-            return success_counter
+            # MODIFIED: return success_counter -> break
+            break
+    # MODIFIED: save lang_annotations seperately
+    if record and success_counter==5:
+        lang_annotations = [val_annotations[subtask][0] for subtask in eval_sequence]
+        lang_annotations.append(success_counter)
+        save_path_lang = f"{save_dir}/{get_video_tag(i).replace('/', '_')}_{global_step}_lang.npy"
+        np.save(save_path_lang, lang_annotations)
+    if not success_counter == 5:
+        rollout_video.pop_last()
     return success_counter
 
 
@@ -199,11 +229,15 @@ def rollout(env, model, task_oracle, cfg, subtask, lang_embeddings, val_annotati
         action = model.step(obs, goal)
         obs, _, _, current_info = env.step(action)
         if cfg.debug:
-            img = env.render(mode="rgb_array")
-            join_vis_lang(img, lang_annotation)
+            pass
+            # img = env.render(mode="rgb_array")
+            # CHECK: 왜 join_vis_lang에서 cv2를 open하다가 아무 반응 없이 멈추지?
+            # join_vis_lang(img, lang_annotation)
             # time.sleep(0.1)
-        if record:
+        # MODIFIED: 6 step마다 한 frame 씩만 update
+        if record and step % 6 == 0:
             # update video
+            # NOTE: observation RGB per frame
             rollout_video.update(obs["rgb_obs"]["rgb_static"])
         # check if current step solves a task
         current_task_info = task_oracle.get_task_info_for_set(start_info, current_info, {subtask})
@@ -211,12 +245,17 @@ def rollout(env, model, task_oracle, cfg, subtask, lang_embeddings, val_annotati
             if cfg.debug:
                 print(colored("success", "green"), end=" ")
             if record:
-                rollout_video.add_language_instruction(lang_annotation)
+                # CHECK: adding lang annotation to video here
+                # rollout_video.add_language_instruction(lang_annotation)
+                pass
             return True
     if cfg.debug:
+        # NOTE: 하나라도 실패하면 다음 task로 넘어가지 못하고 360 step을 다 소모함
         print(colored("fail", "red"), end=" ")
     if record:
-        rollout_video.add_language_instruction(lang_annotation)
+        # CHECK: adding lang annotation to video here
+        # rollout_video.add_language_instruction(lang_annotation)
+        pass
     return False
 
 
@@ -224,6 +263,7 @@ def rollout(env, model, task_oracle, cfg, subtask, lang_embeddings, val_annotati
 def main(cfg):
     log_wandb = cfg.log_wandb
     torch.cuda.set_device(cfg.device)
+    # CHECK: change seed to generate new sequences every time
     seed_everything(0, workers=True)  # type:ignore
     # evaluate a custom model
     checkpoints = [get_last_checkpoint(Path(cfg.train_folder))]
@@ -233,7 +273,7 @@ def main(cfg):
     plans = {}
 
     for checkpoint in checkpoints:
-        print(cfg.device)
+        print(f'device: {cfg.device}')
         model, env, _, lang_embeddings = get_default_beso_and_env(
             cfg.train_folder,
             cfg.dataset_path,
@@ -271,6 +311,8 @@ def main(cfg):
             )
 
             results[checkpoint], plans[checkpoint] = evaluate_policy(model, env, lang_embeddings, cfg, num_videos=cfg.num_videos, save_dir=Path(log_dir))
+
+            # just print success rates, etc. videos are not saved here
             print_and_save(results, plans, cfg, log_dir=log_dir)
             run.finish()
 

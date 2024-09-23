@@ -8,21 +8,21 @@ eval_cfg_overwrite:
       lang_dataset:
         lang_folder: lang_annotations
   overwrite_module_cfg:
-    voltron_cache: /home/i53/student/yagmurlu/code/mdt_policy/vcache
+    voltron_cache: /home/snuro/lldm/mdt_policy/vcache
 
 ep_len: 360
-num_sequences: 1000
-num_videos: 10
+num_sequences: 5
+num_videos: 5
 lang_embeddings: null
 render: False
 log_wandb: True
 wandb:
-  entity: omeryagmurlu
-debug: False
-dataset_path: /home/i53/student/yagmurlu/code/mdt_policy/dataset/task_D_D
-train_folder: /home/i53/student/yagmurlu/code/mdt_policy/pretrained_models/CALVIN ABCD/mdtv_1_abcd
+  entity: 
+debug: True
+dataset_path: /cvdata1/jihwan/calvin/dataset/task_ABCD_D
+train_folder: /home/snuro/lldm/calvin_models/mdtv_1_abcd
 model_name: mdt_test
-device: 0
+device: 1
 sampler_type: ddim
 multistep: 10
 num_sampling_steps: 10
@@ -31,6 +31,9 @@ cfg_value: 1
 sigma_min: 1.0
 sigma_max: 80
 noise_scheduler: exponential
+
+dataset_generation:
+  sparsity: 
 # sigma_min: null
 # sigma_max: null
 # noise_scheduler: null
