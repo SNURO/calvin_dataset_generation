@@ -195,7 +195,7 @@ def evaluate_sequence(
         if record:
             # MODIFIED: removed draw_outcome 
             # rollout_video.draw_outcome(success)
-            pass
+            lang_annotations_idx.append([rollout_video.sub_task_beginning,rollout_video.step_counter-1])
             
         if success:
             success_counter += 1
@@ -205,9 +205,11 @@ def evaluate_sequence(
     # MODIFIED: save lang_annotations seperately
     if record and success_counter==5:
         lang_annotations = [val_annotations[subtask][0] for subtask in eval_sequence]
-        lang_annotations.append(success_counter)
+        #lang_annotations.append(success_counter)
         save_path_lang = f"{save_dir}/{get_video_tag(i).replace('/', '_')}_{global_step}_lang.npy"
+        save_path_lang_idx = f"{save_dir}/{get_video_tag(i).replace('/', '_')}_{global_step}_lang_idx.npy"
         np.save(save_path_lang, lang_annotations)
+        np.save(save_path_lang_idx, lang_annotations_idx)
     if not success_counter == 5:
         rollout_video.pop_last()
     return success_counter
