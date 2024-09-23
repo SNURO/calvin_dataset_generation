@@ -163,11 +163,20 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
             eval_sequences.set_description(description)
         if result == 5:
             num_saved += 1
+        if record and num_saved and num_saved % cfg.dataset_generation.flush_interval == 0:
+            # save videos
+            print()
+            print("####################################################################")
+            print(f"flushing {cfg.dataset_generation.flush_interval} videos")
+            print(f"progress {i}/{cfg.num_sequences} done")
+            print("####################################################################")
+            rollout_video._log_videos_to_file(global_step, save_as_video=True)
+            rollout_video.pop_all()
 
     if num_videos > 0:
         # log rollout videos
         # CHECK: have to modify this
-        print(f"saving {num_saved} videos")
+        print(f"saving {num_saved % cfg.dataset_generation.flush_interval} videos")
         rollout_video._log_videos_to_file(global_step, save_as_video=True)
     return results, plans
 

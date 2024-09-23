@@ -84,6 +84,16 @@ class RolloutVideo:
         self.captions.pop()
         self.step_counter = 0
         self.sub_task_beginning = 0
+    
+    def pop_all(self) -> None:
+        """
+        Remove all video from the list.
+        """
+        self.videos = []
+        self.tags = []
+        self.captions = []
+        self.step_counter = 0
+        self.sub_task_beginning = 0
 
     def draw_outcome(self, successful):
         """
