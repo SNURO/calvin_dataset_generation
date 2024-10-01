@@ -12,6 +12,7 @@ from torchvision.transforms.functional import resize
 import wandb
 import wandb.util
 from moviepy.editor import ImageSequenceClip
+import time
 
 from mdt.utils.utils import add_text
 
@@ -288,6 +289,13 @@ class RolloutVideo:
                 clip.write_videofile(filename, codec='libx264', bitrate="5000k")  # You can adjust the bitrate as needed
             else:
                 clip.write_gif(filename, logger=None)
+        
+        time.sleep(1)
+        if self.videos:
+            del clip
+
+        import gc
+        gc.collect()
     
     def save_frames_to_subfolder(self, n, rollout_index):
         # Ensure n is a valid number

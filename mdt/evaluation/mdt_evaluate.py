@@ -144,10 +144,13 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
     if not cfg.debug:
         eval_sequences = tqdm(eval_sequences, position=0, leave=True)
 
-    num_saved = 0
+    num_saved = cfg.dataset_generation.num_saved
 
     for i, (initial_state, eval_sequence) in enumerate(eval_sequences):
         record = num_saved < num_videos
+        # MODIFIED: exit if we have enough videos
+        if not record:
+            break
         result = evaluate_sequence(
             env, model, task_oracle, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, num_saved, save_dir, global_step
         )
@@ -172,6 +175,7 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
             print("####################################################################")
             rollout_video._log_videos_to_file(global_step, save_as_video=True)
             rollout_video.pop_all()
+        
 
     if num_videos > 0:
         # log rollout videos
@@ -225,50 +229,51 @@ def evaluate_sequence(
 
 
 def rollout(env, model, task_oracle, cfg, subtask, lang_embeddings, val_annotations, record=False, rollout_video=None):
-    if cfg.debug:
-        print(f"{subtask} ", end="")
-        time.sleep(0.5)
-    obs = env.get_obs()
-    # get lang annotation for subtask
-    lang_annotation = val_annotations[subtask][0]
-    # get language goal embedding
-    goal = lang_embeddings.get_lang_goal(lang_annotation)
-    goal['lang_text'] = val_annotations[subtask][0]
-    model.reset()
-    start_info = env.get_info()
-
-    for step in range(cfg.ep_len):
-        action = model.step(obs, goal)
-        obs, _, _, current_info = env.step(action)
+    with torch.no_grad():
         if cfg.debug:
-            pass
-            # img = env.render(mode="rgb_array")
-            # CHECK: 왜 join_vis_lang에서 cv2를 open하다가 아무 반응 없이 멈추지?
-            # join_vis_lang(img, lang_annotation)
-            # time.sleep(0.1)
-        # MODIFIED: 6 step마다 한 frame 씩만 update
-        if record and step % cfg.dataset_generation.sparsity == 0:
-            # update video
-            # NOTE: observation RGB per frame
-            rollout_video.update(obs["rgb_obs"]["rgb_static"])
-        # check if current step solves a task
-        current_task_info = task_oracle.get_task_info_for_set(start_info, current_info, {subtask})
-        if len(current_task_info) > 0:
+            print(f"{subtask} ", end="")
+            time.sleep(0.5)
+        obs = env.get_obs()
+        # get lang annotation for subtask
+        lang_annotation = val_annotations[subtask][0]
+        # get language goal embedding
+        goal = lang_embeddings.get_lang_goal(lang_annotation)
+        goal['lang_text'] = val_annotations[subtask][0]
+        model.reset()
+        start_info = env.get_info()
+
+        for step in range(cfg.ep_len):
+            action = model.step(obs, goal)
+            obs, _, _, current_info = env.step(action)
             if cfg.debug:
-                print(colored("success", "green"), end=" ")
-            if record:
-                # CHECK: adding lang annotation to video here
-                # rollout_video.add_language_instruction(lang_annotation)
                 pass
-            return True
-    if cfg.debug:
-        # NOTE: 하나라도 실패하면 다음 task로 넘어가지 못하고 360 step을 다 소모함
-        print(colored("fail", "red"), end=" ")
-    if record:
-        # CHECK: adding lang annotation to video here
-        # rollout_video.add_language_instruction(lang_annotation)
-        pass
-    return False
+                # img = env.render(mode="rgb_array")
+                # CHECK: 왜 join_vis_lang에서 cv2를 open하다가 아무 반응 없이 멈추지?
+                # join_vis_lang(img, lang_annotation)
+                # time.sleep(0.1)
+            # MODIFIED: 6 step마다 한 frame 씩만 update
+            if record and step % cfg.dataset_generation.sparsity == 0:
+                # update video
+                # NOTE: observation RGB per frame
+                rollout_video.update(obs["rgb_obs"]["rgb_static"])
+            # check if current step solves a task
+            current_task_info = task_oracle.get_task_info_for_set(start_info, current_info, {subtask})
+            if len(current_task_info) > 0:
+                if cfg.debug:
+                    print(colored("success", "green"), end=" ")
+                if record:
+                    # CHECK: adding lang annotation to video here
+                    # rollout_video.add_language_instruction(lang_annotation)
+                    pass
+                return True
+        if cfg.debug:
+            # NOTE: 하나라도 실패하면 다음 task로 넘어가지 못하고 360 step을 다 소모함
+            print(colored("fail", "red"), end=" ")
+        if record:
+            # CHECK: adding lang annotation to video here
+            # rollout_video.add_language_instruction(lang_annotation)
+            pass
+        return False
 
 
 @hydra.main(config_path="../../conf", config_name="mdt_evaluate")
