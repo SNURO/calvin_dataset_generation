@@ -11,6 +11,7 @@ from omegaconf import OmegaConf
 import pyhash
 import torch
 from hydra.core.global_hydra import GlobalHydra
+import random
 
 from mdt.utils.utils import add_text, format_sftp_path
 
@@ -155,7 +156,7 @@ def get_default_model_and_env(train_folder, dataset_path, checkpoint, env=None, 
     return model, env, data_module, lang_embeddings
 
 
-def get_default_beso_and_env(train_folder, dataset_path, checkpoint, env=None, lang_embeddings=None, device_id=0, eval_cfg_overwrite={}):
+def get_default_beso_and_env(train_folder, dataset_path, checkpoint, env=None, lang_embeddings=None, device_id=0, eval_cfg_overwrite={}, scene=None):
     train_cfg_path = Path(train_folder) / ".hydra/config.yaml"
     train_cfg_path = format_sftp_path(train_cfg_path)
     def_cfg = OmegaConf.load(train_cfg_path)
@@ -186,7 +187,10 @@ def get_default_beso_and_env(train_folder, dataset_path, checkpoint, env=None, l
 
     if env is None:
         rollout_cfg = OmegaConf.load(Path(__file__).parents[2] / "conf/callbacks/rollout/default.yaml")
-        env = hydra.utils.instantiate(rollout_cfg.env_cfg, dataset, device, show_gui=False)
+        if not scene:
+            env = hydra.utils.instantiate(rollout_cfg.env_cfg, dataset, device, show_gui=False)
+        else:
+            env = hydra.utils.instantiate(rollout_cfg.env_cfg, dataset, device, show_gui=False, scene = scene)
 
     checkpoint = format_sftp_path(checkpoint)
     print(f"Loading model from {checkpoint}")
@@ -275,7 +279,7 @@ def temp_seed(seed):
         np.random.set_state(state)
 
 
-def get_env_state_for_initial_condition(initial_condition):
+def get_env_state_for_initial_condition(initial_condition, shuffle=False):
     robot_obs = np.array(
         [
             0.02586889,
@@ -298,10 +302,18 @@ def get_env_state_for_initial_condition(initial_condition):
     block_rot_z_range = (np.pi / 2 - np.pi / 8, np.pi / 2 + np.pi / 8)
     block_slider_left = np.array([-2.40851662e-01, 9.24044687e-02, 4.60990009e-01])
     block_slider_right = np.array([7.03416330e-02, 9.24044687e-02, 4.60990009e-01])
+    # MODIFIED: initial positions randomized
     block_table = [
         np.array([5.00000896e-02, -1.20000177e-01, 4.59990009e-01]),
         np.array([2.29995412e-01, -1.19995140e-01, 4.59990010e-01]),
+        np.array([3.70000896e-02, -1.20000177e-01, 4.59990009e-01]),
+
+        np.array([5.00000896e-02, -0.20000177e-01, 4.59990009e-01]),
+        np.array([2.29995412e-01, -0.19995140e-01, 4.59990010e-01]),
+        np.array([3.70000896e-02, -0.20000177e-01, 4.59990009e-01])
     ]
+    if shuffle:
+        random.shuffle(block_table)
     # we want to have a "deterministic" random seed for each initial condition
     seed = hasher(str(initial_condition.values()))
     with temp_seed(seed):

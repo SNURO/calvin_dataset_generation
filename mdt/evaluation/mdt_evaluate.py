@@ -164,7 +164,7 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
             description = " ".join([f"{i + 1}/5 : {v * 100:.1f}% |" for i, v in enumerate(success_rates)])
             description += f" Average: {average_rate:.1f} |"
             eval_sequences.set_description(description)
-        if result == 5:
+        if not cfg.dataset_generation.skip_failed or (cfg.dataset_generation.skip_failed and result == 5):
             num_saved += 1
         if record and num_saved and num_saved % cfg.dataset_generation.flush_interval == 0:
             # save videos
@@ -188,7 +188,7 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
 def evaluate_sequence(
     env, model, task_checker, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, i, save_dir, global_step
 ):
-    robot_obs, scene_obs = get_env_state_for_initial_condition(initial_state)
+    robot_obs, scene_obs = get_env_state_for_initial_condition(initial_state, shuffle = cfg.dataset_generation.shuffle_initial)
     env.reset(robot_obs=robot_obs, scene_obs=scene_obs)
     if record:
         caption = " | ".join(eval_sequence)
@@ -216,14 +216,14 @@ def evaluate_sequence(
             # MODIFIED: return success_counter -> break
             break
     # MODIFIED: save lang_annotations seperately
-    if record and success_counter==5:
+    if record and (cfg.dataset_generation.skip_failed and success_counter==5) or not cfg.dataset_generation.skip_failed:
         lang_annotations = [val_annotations[subtask][0] for subtask in eval_sequence]
         #lang_annotations.append(success_counter)
         save_path_lang = f"{save_dir}/{get_video_tag(i).replace('/', '_')}_{global_step}_lang.npy"
         save_path_lang_idx = f"{save_dir}/{get_video_tag(i).replace('/', '_')}_{global_step}_lang_idx.npy"
         np.save(save_path_lang, lang_annotations)
         np.save(save_path_lang_idx, lang_annotations_idx)
-    if not success_counter == 5:
+    if cfg.dataset_generation.skip_failed and not success_counter == 5:
         rollout_video.pop_last()
     return success_counter
 
@@ -299,6 +299,7 @@ def main(cfg):
             lang_embeddings=lang_embeddings,
             eval_cfg_overwrite=cfg.eval_cfg_overwrite,
             device_id=cfg.device,
+            scene=cfg.dataset_generation.scene
         )
 
         print(cfg.num_sampling_steps, cfg.sampler_type, cfg.multistep, cfg.sigma_min, cfg.sigma_max, cfg.noise_scheduler)

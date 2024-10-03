@@ -1,0 +1,9 @@
+scene ABC
+ - mdt.evaluation.utils.py get_default_beso_and_env() -> env=hydra.utils... (argument) as 
+ - scene = "calvin_scene_C"
+
+ - env cfg : /cvdata1/jihwan/calvin/dataset/task_ABCD_D/validation/.hydra
+
+Initialization
+ - mdt_evaluate.py evaluate_sequence() -> mdt.evaluation.utils.py get_env_state_for_initial_condition
+
