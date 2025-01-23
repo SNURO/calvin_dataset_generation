@@ -17,6 +17,7 @@ import torch
 from tqdm.auto import tqdm
 import wandb
 import torch.distributed as dist
+from PIL import Image
 
 from mdt.evaluation.multistep_sequences import get_sequences
 from mdt.evaluation.utils import get_default_beso_and_env, get_env_state_for_initial_condition, join_vis_lang
@@ -130,7 +131,8 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
             # CHECK: change video saving directory here
             save_dir=save_dir,
             # CHECK: resolution scale을 192/200으로 설정한다면?
-            resolution_scale=192/224,
+            # resolution_scale=192/224,
+            resolution_scale=1.0
         )
     else:
         rollout_video = None
@@ -155,6 +157,7 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
             env, model, task_oracle, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, num_saved, save_dir, global_step
         )
         results.append(result)
+        print(num_saved, result)
         if record:
             # NOTE: log_to_file = True이므로 아무것도 안함
             rollout_video.write_to_tmp()
@@ -251,11 +254,17 @@ def rollout(env, model, task_oracle, cfg, subtask, lang_embeddings, val_annotati
                 # CHECK: 왜 join_vis_lang에서 cv2를 open하다가 아무 반응 없이 멈추지?
                 # join_vis_lang(img, lang_annotation)
                 # time.sleep(0.1)
-            # MODIFIED: 6 step마다 한 frame 씩만 update
             if record and step % cfg.dataset_generation.sparsity == 0:
                 # update video
                 # NOTE: observation RGB per frame
                 rollout_video.update(obs["rgb_obs"]["rgb_static"])
+                # img = np.clip(((obs["rgb_obs"]["rgb_static"].cpu() / 2) + 0.5) * 255, 0, 255).astype(np.uint8)
+                # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                # cv2.imsave("/131_data/jihwan/2025_avdm/calvin_dataset_generation/mdt/frame_{step}.png", img)
+                # breakpoint()
+                # frame = Image.fromarray((((obs["rgb_obs"]["rgb_static"].squeeze() / 2) +0.5).clamp(0,1).cpu().numpy().transpose(1, 2, 0) * 255).astype(np.uint8))
+                # frame.save(f"/131_data/jihwan/2025_avdm/calvin_dataset_generation/mdt/frame_{step}.png")
+                # breakpoint()
             # check if current step solves a task
             current_task_info = task_oracle.get_task_info_for_set(start_info, current_info, {subtask})
             if len(current_task_info) > 0:
@@ -276,7 +285,7 @@ def rollout(env, model, task_oracle, cfg, subtask, lang_embeddings, val_annotati
         return False
 
 
-@hydra.main(config_path="../../conf", config_name="mdt_evaluate")
+@hydra.main(config_path="../../conf", config_name="mdt_evaluate_D")
 def main(cfg):
     log_wandb = cfg.log_wandb
     torch.cuda.set_device(cfg.device)

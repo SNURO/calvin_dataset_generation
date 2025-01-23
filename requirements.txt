@@ -3,7 +3,7 @@
  #wheel
 # setuptools==57.5.0
 # pyhash==0.9.3
-numpy>1.2
+numpy==1.26.4
 hydra-core==1.1.1
 hydra-colorlog
 matplotlib
@@ -25,7 +25,7 @@ torchsde
 einops
 torchdiffeq
 gym
-moviepy
+moviepy==1.0.3
 tqdm
 termcolor
 wandb
