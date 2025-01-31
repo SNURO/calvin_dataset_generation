@@ -7,3 +7,15 @@ scene ABC
 Initialization
  - mdt_evaluate.py evaluate_sequence() -> mdt.evaluation.utils.py get_env_state_for_initial_condition
 
+ D -> C
+ : 테이블 위 버튼 위치가 동일하므로 block_table은 변화 없음
+   슬라이더의 위치가 달라졌으므로 slider_left, slider_right 는 변화 필요
+
+C -> B
+ : 테이블 위 버튼 위치가 다름 
+ : 슬라이더 위치는 C와 B가 동일
+
+
+슬라이더 위치는 A-D, B-C가 같음
+테이블 위 버튼 위치는 C-D가 같고 나머지는 전부 다름
+

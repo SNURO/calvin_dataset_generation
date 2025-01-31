@@ -8,7 +8,7 @@ eval_cfg_overwrite:
       lang_dataset:
         lang_folder: lang_annotations
   overwrite_module_cfg:
-    voltron_cache: /home/snuro/lldm/mdt_policy/vcache
+    voltron_cache: /home2/wonjae/lldm/mdt_policy/vcache
 
 ep_len: 360
 num_sequences: 20000
@@ -20,9 +20,9 @@ wandb:
   entity: 
 debug: True
 dataset_path: /cvdata1/jihwan/calvin/dataset/task_ABCD_D
-train_folder: /home/snuro/lldm/calvin_models/mdtv_1_abcd
+train_folder: /home2/wonjae/lldm/calvin_models/mdtv_1_abcd
 model_name: mdt_test
-device: 1
+device: 0
 sampler_type: ddim
 multistep: 10
 num_sampling_steps: 10
@@ -34,11 +34,12 @@ noise_scheduler: exponential
 
 dataset_generation:
   sparsity: 1
-  flush_interval : 50
+  flush_interval : 10
   num_saved : 0
-  shuffle_initial : True
+  shuffle_initial : False
   skip_failed : True
   scene : calvin_scene_D
+  save_dir : /131_data/wonjae/lldm/dataset/calvin_generated
 # sigma_min: null
 # sigma_max: null
 # noise_scheduler: null

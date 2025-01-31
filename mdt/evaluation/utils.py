@@ -279,7 +279,7 @@ def temp_seed(seed):
         np.random.set_state(state)
 
 
-def get_env_state_for_initial_condition(initial_condition, shuffle=False):
+def get_env_state_for_initial_condition(initial_condition, shuffle=False, scene='D'):
     robot_obs = np.array(
         [
             0.02586889,
@@ -300,18 +300,42 @@ def get_env_state_for_initial_condition(initial_condition, shuffle=False):
         ]
     )
     block_rot_z_range = (np.pi / 2 - np.pi / 8, np.pi / 2 + np.pi / 8)
-    block_slider_left = np.array([-2.40851662e-01, 9.24044687e-02, 4.60990009e-01])
-    block_slider_right = np.array([7.03416330e-02, 9.24044687e-02, 4.60990009e-01])
+    # MODIFIED: block_slider_left, block_slider_right, block_table should be hardcoded according to 
+    # scene index A,B,C or D (was set for D)
+    # NOTE: D와 A는 슬라이더 위치가 완전히 똑같고, C와 B도 슬라이더 위치가 완전히 똑같음
+    if scene == 'D' or scene == 'A':
+        block_slider_left = np.array([-2.40851662e-01, 9.24044687e-02, 4.60990009e-01])
+        block_slider_right = np.array([7.03416330e-02, 9.24044687e-02, 4.60990009e-01])
+    elif scene == 'C' or scene == 'B':
+        block_slider_left = np.array([1.03416330e-02, 9.24044687e-02, 4.60990009e-01])
+        block_slider_right = np.array([2.29995412e-01, 9.24044687e-02, 4.60990009e-01])
+    else:
+        raise ValueError(f"scene {scene} not recognized")
     # MODIFIED: initial positions randomized
-    block_table = [
-        np.array([5.00000896e-02, -1.20000177e-01, 4.59990009e-01]),
-        np.array([2.29995412e-01, -1.19995140e-01, 4.59990010e-01]),
-        np.array([3.70000896e-02, -1.20000177e-01, 4.59990009e-01]),
+    # NOTE: D와 C는 테이블 위 버튼 위치가 똑같고, B와 A는 서로 다르긴 한데 양쪽 끝이라서 중간쯤에 똑같이 블록들 위치 잡아줌
+    if scene=='D' or scene=='C':
+        block_table = [
+            np.array([5.00000896e-02, -1.20000177e-01, 4.59990009e-01]),
+            np.array([2.29995412e-01, -1.19995140e-01, 4.59990010e-01]),
+            np.array([1.40000000e-01, -1.20000177e-01, 4.59990009e-01]),
 
-        np.array([5.00000896e-02, -0.20000177e-01, 4.59990009e-01]),
-        np.array([2.29995412e-01, -0.19995140e-01, 4.59990010e-01]),
-        np.array([3.70000896e-02, -0.20000177e-01, 4.59990009e-01])
-    ]
+            np.array([5.00000896e-02, -0.70000177e-01, 4.59990009e-01]),
+            np.array([2.29995412e-01, -0.69995140e-01, 4.59990010e-01]),
+            np.array([1.40000000e-01, -0.70000177e-01, 4.59990009e-01])
+        ]
+    elif scene=='B' or scene=='A':
+        block_table = [
+            np.array([-1.500000896e-01, -1.20000177e-01, 4.59990009e-01]),
+            np.array([0.29995412e-01, -1.19995140e-01, 4.59990010e-01]),
+            np.array([-0.60000000e-01, -1.20000177e-01, 4.59990009e-01]),
+
+            np.array([-1.500000896e-01, -0.70000177e-01, 4.59990009e-01]),
+            np.array([0.29995412e-01, -0.69995140e-01, 4.59990010e-01]),
+            np.array([-0.60000000e-01, -0.70000177e-01, 4.59990009e-01])
+        ]
+    else:
+        raise ValueError(f"scene {scene} not recognized")
+    
     if shuffle:
         random.shuffle(block_table)
     # we want to have a "deterministic" random seed for each initial condition
