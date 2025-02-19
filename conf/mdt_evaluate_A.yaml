@@ -1,0 +1,48 @@
+defaults:
+  - /callbacks/rollout/tasks@tasks: new_playtable_tasks
+  - annotations: new_playtable_validation
+
+eval_cfg_overwrite:
+  datamodule:
+    datasets:
+      lang_dataset:
+        lang_folder: lang_annotations
+  overwrite_module_cfg:
+    voltron_cache: /home2/wonjae/lldm/mdt_policy/vcache
+    #voltron_cache: /131_data/jihwan/data/huggingface/cache
+
+ep_len: 360
+num_sequences: 20000
+num_videos: 5000
+lang_embeddings: null
+render: False
+log_wandb: True
+wandb:
+  entity: 
+debug: True
+dataset_path: /cvdata1/jihwan/calvin/dataset/task_ABCD_D
+train_folder: /home2/wonjae/lldm/calvin_models/mdtv_1_abcd
+#train_folder: /131_data/jihwan/2025_avdm/calvin_dataset_generation/checkpoints/
+model_name: mdt_test
+device: 0
+sampler_type: ddim
+multistep: 10
+num_sampling_steps: 10
+cond_lambda: 1
+cfg_value: 1
+sigma_min: 1.0
+sigma_max: 80
+noise_scheduler: exponential
+
+dataset_generation:
+  sparsity: 1
+  flush_interval : 10
+  num_saved : 0
+  shuffle_initial : False
+  skip_failed : True
+  scene : calvin_scene_D
+  #save_dir : /131_data/wonjae/lldm/dataset/calvin_generated
+# sigma_min: null
+# sigma_max: null
+# noise_scheduler: null
+  scene : calvin_scene_A

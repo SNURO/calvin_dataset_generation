@@ -16,6 +16,8 @@ import time
 
 from mdt.utils.utils import add_text
 
+import imageio.v3 as iio
+
 log = logging.getLogger(__name__)
 
 flatten = lambda t: [item for sublist in t for item in sublist]
@@ -23,7 +25,7 @@ flatten_list_of_dicts = lambda t: {k: v for d in t for k, v in d.items()}
 
 
 def _unnormalize(img):
-    return img / 2 + 0.5
+    return img / 4 + 0.5
 
 
 def delete_tmp_video(path):
@@ -261,7 +263,9 @@ class RolloutVideo:
             if len(video.shape) == 4:
                 video = video.unsqueeze(0)
             video = np.clip(video.numpy() * 255, 0, 255).astype(np.uint8)
-
+            # if save_as_video:
+            #     filename = str(self.save_dir / f"{tag}_{global_step}.mp4")
+            #     iio.imwrite(filename, video.squeeze().transpose(0,2,3,1), fps=30)
             mpy = wandb.util.get_module(
                 "moviepy.editor",
                 required='wandb.Video requires moviepy and imageio when passing raw data.  Install with "pip install moviepy imageio"',
