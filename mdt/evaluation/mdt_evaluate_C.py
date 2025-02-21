@@ -27,12 +27,12 @@ from mdt.rollout.rollout_video import RolloutVideo
 logger = logging.getLogger(__name__)
 
 
-def get_video_tag(i):
+def get_video_tag(i, scene_name):
     if dist.is_available() and dist.is_initialized():
         i = i * dist.get_world_size() + dist.get_rank()
     # return f"_long_horizon/sequence_{i}"
     # MODIFIED: saving file name convention
-    return f"C_{i:05d}"
+    return f"{scene_name[-1]}_{i:05d}"
 
 
 def get_log_dir(log_dir):
@@ -190,11 +190,12 @@ def evaluate_policy(model, env, lang_embeddings, cfg, num_videos=0, save_dir=Non
 def evaluate_sequence(
     env, model, task_checker, initial_state, eval_sequence, lang_embeddings, val_annotations, cfg, record, rollout_video, i, save_dir, global_step
 ):
-    robot_obs, scene_obs = get_env_state_for_initial_condition(initial_state, shuffle = cfg.dataset_generation.shuffle_initial)
+    # MODIFIED: initial position of blocks changed according to scene name (e.g. calvin_env_D)
+    robot_obs, scene_obs = get_env_state_for_initial_condition(initial_state, shuffle = cfg.dataset_generation.shuffle_initial, scene=cfg.dataset_generation.scene[-1])
     env.reset(robot_obs=robot_obs, scene_obs=scene_obs)
     if record:
         caption = " | ".join(eval_sequence)
-        rollout_video.new_video(tag=get_video_tag(i), caption=caption)
+        rollout_video.new_video(tag=get_video_tag(i, cfg.dataset_generation.scene), caption=caption)
     success_counter = 0
     lang_annotations_idx = []
     if cfg.debug:
@@ -221,8 +222,8 @@ def evaluate_sequence(
     if record and (cfg.dataset_generation.skip_failed and success_counter==5) or not cfg.dataset_generation.skip_failed:
         lang_annotations = [val_annotations[subtask][0] for subtask in eval_sequence]
         #lang_annotations.append(success_counter)
-        save_path_lang = f"{save_dir}/{get_video_tag(i).replace('/', '_')}_{global_step}_lang.npy"
-        save_path_lang_idx = f"{save_dir}/{get_video_tag(i).replace('/', '_')}_{global_step}_lang_idx.npy"
+        save_path_lang = f"{save_dir}/{get_video_tag(i, cfg.dataset_generation.scene).replace('/', '_')}_{global_step}_lang.npy"
+        save_path_lang_idx = f"{save_dir}/{get_video_tag(i, cfg.dataset_generation.scene).replace('/', '_')}_{global_step}_lang_idx.npy"
         np.save(save_path_lang, lang_annotations)
         np.save(save_path_lang_idx, lang_annotations_idx)
     if cfg.dataset_generation.skip_failed and not success_counter == 5:
@@ -335,8 +336,14 @@ def main(cfg):
                 config=dict(cfg),
                 dir=log_dir / "wandb",
             )
+            if cfg.dataset_generation.save_dir:
+                save_dir = Path(cfg.dataset_generation.save_dir) / time.strftime("%Y-%m-%d_%H-%M-%S")
+                os.makedirs(save_dir, exist_ok=False)
+            else:
+                save_dir = Path(log_dir)
+            print(f"saving to {save_dir}")
 
-            results[checkpoint], plans[checkpoint] = evaluate_policy(model, env, lang_embeddings, cfg, num_videos=cfg.num_videos, save_dir=Path(log_dir))
+            results[checkpoint], plans[checkpoint] = evaluate_policy(model, env, lang_embeddings, cfg, num_videos=cfg.num_videos, save_dir=save_dir)
 
             # just print success rates, etc. videos are not saved here
             print_and_save(results, plans, cfg, log_dir=log_dir)
